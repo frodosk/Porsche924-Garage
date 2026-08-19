@@ -61,9 +61,9 @@ const Sync = {
   },
 
   _attachListeners(store) {
-    let firstMeta = false, firstTrips = false, firstFuel = false, firstMaint = false;
+    let firstMeta = false, firstTrips = false, firstFuel = false, firstMaint = false, firstOther = false;
     const maybeOnline = () => {
-      if (firstMeta && firstTrips && firstFuel && firstMaint) this._setStatus('online');
+      if (firstMeta && firstTrips && firstFuel && firstMaint && firstOther) this._setStatus('online');
     };
 
     this._unsubs.push(
@@ -134,6 +134,20 @@ const Sync = {
         (err) => { console.error('Wartungs-Sync-Fehler', err); this._setStatus('error'); }
       )
     );
+
+    this._unsubs.push(
+      this.colRef('othercosts').onSnapshot(
+        (snap) => {
+          firstOther = true;
+          store.state.othercosts = snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          store.notify();
+          maybeOnline();
+        },
+        (err) => { console.error('Sonstige-Kosten-Sync-Fehler', err); this._setStatus('error'); }
+      )
+    );
   },
 
   _pushMeta(store) {
@@ -192,5 +206,11 @@ const Sync = {
       if (saved) sync._pushDoc('maintenance', saved);
     });
     wrap('deleteMaintenance', (id) => sync._deleteDoc('maintenance', id));
+
+    wrap('upsertOtherCost', (entry) => {
+      const saved = store.state.othercosts.find((o) => o.id === entry.id) || store.state.othercosts[0];
+      if (saved) sync._pushDoc('othercosts', saved);
+    });
+    wrap('deleteOtherCost', (id) => sync._deleteDoc('othercosts', id));
   },
 };

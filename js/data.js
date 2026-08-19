@@ -33,6 +33,7 @@ function defaultState() {
     trips: [],
     fuelups: [],
     maintenance: [],
+    othercosts: [],
   };
 }
 
@@ -68,6 +69,7 @@ const Store = {
       this.state.trips = saved.trips || [];
       this.state.fuelups = saved.fuelups || [];
       this.state.maintenance = saved.maintenance || [];
+      this.state.othercosts = saved.othercosts || [];
       this.state.drivers = saved.drivers && saved.drivers.length ? saved.drivers : DEFAULT_DRIVERS.slice();
     }
   },
@@ -146,6 +148,18 @@ const Store = {
     this.state.maintenance = this.state.maintenance.filter((m) => m.id !== id);
     this.notify();
   },
+
+  // ---- Other costs (Zulassung, Radio, Zubehör, etc.) ----
+  upsertOtherCost(entry) {
+    const idx = this.state.othercosts.findIndex((o) => o.id === entry.id);
+    if (idx >= 0) this.state.othercosts[idx] = entry;
+    else this.state.othercosts.unshift({ ...entry, id: entry.id || uid(), createdAt: Date.now() });
+    this.notify();
+  },
+  deleteOtherCost(id) {
+    this.state.othercosts = this.state.othercosts.filter((o) => o.id !== id);
+    this.notify();
+  },
 };
 
 /* =========================================================
@@ -199,10 +213,51 @@ const Calc = {
   },
 
   fairSplit(state, year) {
+    return this._splitByCost(state, year, this.costByDriver(state, year), this.totalCostYear(state, year));
+  },
+
+  // ---- Sonstige Kosten (Zulassung, Radio, Zubehör, etc.) ----
+  otherCostsForYear(state, year) {
+    return state.othercosts.filter((o) => o.date && new Date(o.date).getFullYear() === year);
+  },
+
+  otherCostsByDriver(state, year) {
+    const map = {};
+    state.drivers.concat([]).forEach((d) => (map[d] = 0));
+    this.otherCostsForYear(state, year).forEach((o) => {
+      const name = o.driver || OTHER_DRIVER;
+      map[name] = (map[name] || 0) + (o.amount || 0);
+    });
+    return map;
+  },
+
+  totalOtherCostYear(state, year) {
+    return this.otherCostsForYear(state, year).reduce((sum, o) => sum + (o.amount || 0), 0);
+  },
+
+  // ---- Gesamtabrechnung: Tankkosten + Sonstige Kosten, anteilig an gefahrenen km ----
+  combinedCostByDriver(state, year) {
+    const fuel = this.costByDriver(state, year);
+    const other = this.otherCostsByDriver(state, year);
+    const map = {};
+    state.drivers.concat([]).forEach((d) => (map[d] = 0));
+    new Set([...Object.keys(fuel), ...Object.keys(other)]).forEach((name) => {
+      map[name] = (fuel[name] || 0) + (other[name] || 0);
+    });
+    return map;
+  },
+
+  combinedTotalCostYear(state, year) {
+    return this.totalCostYear(state, year) + this.totalOtherCostYear(state, year);
+  },
+
+  fairSplitAll(state, year) {
+    return this._splitByCost(state, year, this.combinedCostByDriver(state, year), this.combinedTotalCostYear(state, year));
+  },
+
+  _splitByCost(state, year, costMap, totalCost) {
     const kmMap = this.kmByDriver(state, year);
-    const costMap = this.costByDriver(state, year);
     const totalKm = Object.values(kmMap).reduce((a, b) => a + b, 0);
-    const totalCost = this.totalCostYear(state, year);
     const names = new Set([...Object.keys(kmMap), ...Object.keys(costMap)]);
     const rows = [];
     names.forEach((name) => {
@@ -215,6 +270,29 @@ const Calc = {
     return rows
       .filter((r) => r.km > 0 || r.paid > 0)
       .sort((a, b) => b.km - a.km);
+  },
+
+  // ---- Splitwise-artiger Ausgleich: minimale Anzahl an Zahlungen, um alle Salden auszugleichen ----
+  settleUp(rows) {
+    const creditors = rows
+      .filter((r) => r.balance > 0.01)
+      .map((r) => ({ name: r.name, amount: r.balance }))
+      .sort((a, b) => b.amount - a.amount);
+    const debtors = rows
+      .filter((r) => r.balance < -0.01)
+      .map((r) => ({ name: r.name, amount: -r.balance }))
+      .sort((a, b) => b.amount - a.amount);
+    const transactions = [];
+    let i = 0, j = 0;
+    while (i < debtors.length && j < creditors.length) {
+      const pay = Math.min(debtors[i].amount, creditors[j].amount);
+      if (pay > 0.01) transactions.push({ from: debtors[i].name, to: creditors[j].name, amount: pay });
+      debtors[i].amount -= pay;
+      creditors[j].amount -= pay;
+      if (debtors[i].amount < 0.01) i++;
+      if (creditors[j].amount < 0.01) j++;
+    }
+    return transactions;
   },
 
   maintenanceReminders(state) {

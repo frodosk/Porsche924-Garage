@@ -40,6 +40,7 @@
     renderStats();
     renderVehiclePanel();
     renderMaintenance();
+    renderCostsView();
     renderDriverManage();
     renderSettingsPanel();
     populateDriverSelects();
@@ -124,7 +125,7 @@
      --------------------------------------------------------- */
 
   function populateDriverSelects() {
-    [$('#tripDriver'), $('#fuelDriver')].forEach((select) => {
+    [$('#tripDriver'), $('#fuelDriver'), $('#otherCostDriver')].forEach((select) => {
       if (!select) return;
       const current = select.value;
       select.innerHTML = '';
@@ -390,6 +391,10 @@
     lines.push('Wartung');
     lines.push('Datum;Art;Kilometerstand;Kosten (EUR);Notizen');
     state.maintenance.forEach((m) => lines.push(`${Fmt.date(m.date)};${m.type};${m.km};${m.cost};${(m.notes || '').replace(/\n/g, ' ')}`));
+    lines.push('');
+    lines.push('Sonstige Kosten');
+    lines.push('Datum;Bezahlt von;Bezeichnung;Betrag (EUR);Notizen');
+    state.othercosts.forEach((o) => lines.push(`${Fmt.date(o.date)};${o.driver};${o.title};${o.amount};${(o.notes || '').replace(/\n/g, ' ')}`));
 
     const csv = '\uFEFF' + lines.join('\n');
     downloadBlob(csv, 'porsche924-garage-export.csv', 'text/csv;charset=utf-8');
@@ -466,6 +471,147 @@
     $all('[data-delete-maintenance]', listEl).forEach((btn) =>
       btn.addEventListener('click', () => confirmDelete('maintenance', btn.dataset.deleteMaintenance, 'Dieser Wartungseintrag wird endgültig gelöscht.'))
     );
+  }
+
+  /* ---------------------------------------------------------
+     SONSTIGE KOSTEN & GESAMTABRECHNUNG
+     --------------------------------------------------------- */
+
+  function renderCostsView() {
+    const state = Store.state;
+    const year = Calc.currentYear();
+    $('#settlementYear').textContent = year;
+
+    const split = Calc.fairSplitAll(state, year);
+    $('#settlementTable').innerHTML = split.length
+      ? split
+          .map((r) => {
+            const balanceClass = r.balance > 0.5 ? 'is-positive' : r.balance < -0.5 ? 'is-negative' : '';
+            const balanceLabel = r.balance >= 0 ? `+${Fmt.eur(r.balance)} Guthaben` : `${Fmt.eur(r.balance)} offen`;
+            return `
+          <div class="split-row" data-testid="row-settlement-${escapeAttr(r.name)}">
+            <div class="split-row__top"><span>${escapeHtml(r.name)}</span><span class="split-row__balance ${balanceClass}">${balanceLabel}</span></div>
+            <div class="split-row__detail">
+              <span>${Math.round(r.percent * 100)}% der km · Soll: ${Fmt.eur(r.shouldPay)}</span>
+              <span>Bezahlt: ${Fmt.eur(r.paid)}</span>
+            </div>
+          </div>`;
+          })
+          .join('')
+      : `<p class="card__hint">Noch keine Daten für ${year}.</p>`;
+    $('#settlementTotal').textContent = Fmt.eur(Calc.combinedTotalCostYear(state, year));
+
+    const transactions = Calc.settleUp(split);
+    $('#settleUpList').innerHTML = transactions.length
+      ? transactions
+          .map(
+            (t) => `
+          <div class="settle-row" data-testid="row-settle-${escapeAttr(t.from)}-${escapeAttr(t.to)}">
+            <div class="settle-row__names"><span>${escapeHtml(t.from)}</span><span class="settle-row__arrow">→</span><span>${escapeHtml(t.to)}</span></div>
+            <div class="settle-row__amount">${Fmt.eur(t.amount)}</div>
+          </div>`
+          )
+          .join('')
+      : `<p class="settle-empty">Alle Salden sind ausgeglichen.</p>`;
+
+    const entries = state.othercosts.slice().sort((a, b) => new Date(b.date) - new Date(a.date) || (b.createdAt || 0) - (a.createdAt || 0));
+    const listEl = $('#otherCostList');
+    $('#otherCostEmpty').hidden = entries.length > 0;
+    listEl.innerHTML = entries
+      .map(
+        (o) => `
+      <div class="entry-row" data-testid="row-othercost-${o.id}">
+        <div class="entry-row__avatar">${escapeHtml(Fmt.initials(o.driver))}</div>
+        <div class="entry-row__body">
+          <div class="entry-row__title">${escapeHtml(o.title || '–')}</div>
+          <div class="entry-row__meta">${Fmt.date(o.date)} · ${escapeHtml(o.driver || '–')}${o.notes ? ' · ' + escapeHtml(o.notes) : ''}</div>
+        </div>
+        <div class="entry-row__value">${Fmt.eur(o.amount)}</div>
+        <div class="entry-row__actions">
+          <button class="entry-row__icon-btn" data-edit-othercost="${o.id}" type="button" aria-label="Bearbeiten" data-testid="button-edit-othercost-${o.id}">✎</button>
+          <button class="entry-row__icon-btn" data-delete-othercost="${o.id}" type="button" aria-label="Löschen" data-testid="button-delete-othercost-${o.id}">🗑</button>
+        </div>
+      </div>`
+      )
+      .join('');
+
+    $all('[data-edit-othercost]', listEl).forEach((btn) => btn.addEventListener('click', () => openOtherCostModal(btn.dataset.editOthercost)));
+    $all('[data-delete-othercost]', listEl).forEach((btn) =>
+      btn.addEventListener('click', () => confirmDelete('othercost', btn.dataset.deleteOthercost, 'Dieser Kosteneintrag wird endgültig gelöscht.'))
+    );
+
+    $('#btnExportSettlementPdf').onclick = exportSettlementPdf;
+  }
+
+  function exportSettlementPdf() {
+    const state = Store.state;
+    const year = Calc.currentYear();
+    const split = Calc.fairSplitAll(state, year);
+    const transactions = Calc.settleUp(split);
+    const v = state.vehicle || {};
+
+    const rowsHtml = split.length
+      ? split
+          .map(
+            (r) => `
+        <tr>
+          <td>${escapeHtml(r.name)}</td>
+          <td class="num">${Fmt.km(r.km)}</td>
+          <td class="num">${Math.round(r.percent * 100)}%</td>
+          <td class="num">${Fmt.eur(r.shouldPay)}</td>
+          <td class="num">${Fmt.eur(r.paid)}</td>
+          <td class="num ${r.balance >= 0 ? 'pr-balance-pos' : 'pr-balance-neg'}">${r.balance >= 0 ? '+' : ''}${Fmt.eur(r.balance)}</td>
+        </tr>`
+          )
+          .join('')
+      : '<tr><td colspan="6">Keine Daten für dieses Jahr.</td></tr>';
+
+    const totalKm = split.reduce((s, r) => s + r.km, 0);
+    const totalCost = Calc.combinedTotalCostYear(state, year);
+
+    const settleHtml = transactions.length
+      ? transactions.map((t) => `<div class="pr-settle-item">${escapeHtml(t.from)} schuldet ${escapeHtml(t.to)}: <strong>${Fmt.eur(t.amount)}</strong></div>`).join('')
+      : '<div class="pr-settle-item">Alle Salden sind ausgeglichen – niemand schuldet jemandem etwas.</div>';
+
+    const otherEntries = Calc.otherCostsForYear(state, year).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+    const otherHtml = otherEntries.length
+      ? otherEntries
+          .map((o) => `<tr><td>${Fmt.date(o.date)}</td><td>${escapeHtml(o.driver || '–')}</td><td>${escapeHtml(o.title || '–')}</td><td class="num">${Fmt.eur(o.amount)}</td></tr>`)
+          .join('')
+      : '<tr><td colspan="4">Keine sonstigen Kosten in diesem Jahr.</td></tr>';
+
+    const html = `
+      <h1>${escapeHtml(v.name || 'Porsche 924')} – Kostenabrechnung ${year}</h1>
+      <p class="pr-sub">Erstellt am ${Fmt.date(todayIso())} · Kosten anteilig an den gefahrenen Kilometern aufgeteilt (Tanken + sonstige Kosten)</p>
+
+      <h2>Gesamtabrechnung</h2>
+      <table>
+        <thead><tr><th>Fahrer</th><th class="num">km</th><th class="num">Anteil</th><th class="num">Soll</th><th class="num">Bezahlt</th><th class="num">Saldo</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+        <tfoot><tr class="pr-total-row"><td>Gesamt</td><td class="num">${Fmt.km(totalKm)}</td><td class="num">100%</td><td class="num">${Fmt.eur(totalCost)}</td><td class="num" colspan="2"></td></tr></tfoot>
+      </table>
+
+      <h2>Wer schuldet wem</h2>
+      ${settleHtml}
+
+      <h2>Sonstige Kosten im Detail</h2>
+      <table>
+        <thead><tr><th>Datum</th><th>Bezahlt von</th><th>Bezeichnung</th><th class="num">Betrag</th></tr></thead>
+        <tbody>${otherHtml}</tbody>
+      </table>
+
+      <p class="pr-footer">Porsche 924 Garage – automatisch erstellte Abrechnung. Positiver Saldo = Guthaben, negativer Saldo = offene Zahlung.</p>
+    `;
+
+    const report = $('#printReport');
+    report.innerHTML = html;
+    report.classList.add('is-active');
+    const cleanup = () => {
+      report.classList.remove('is-active');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    window.print();
   }
 
   /* ---------------------------------------------------------
@@ -595,6 +741,33 @@
       showToast('Wartungseintrag gespeichert');
     });
 
+    // Other cost form
+    const otherCostDriver = $('#otherCostDriver');
+    otherCostDriver.addEventListener('change', () => {
+      $('#otherCostOtherWrap').hidden = otherCostDriver.value !== OTHER_DRIVER;
+    });
+
+    $('#otherCostForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = $('#otherCostId').value || undefined;
+      const driver = otherCostDriver.value === OTHER_DRIVER ? $('#otherCostOtherName').value.trim() : otherCostDriver.value;
+      const date = $('#otherCostDate').value;
+      const title = $('#otherCostTitle').value.trim();
+      const amount = Number($('#otherCostAmount').value);
+      const notes = $('#otherCostNotes').value.trim();
+      const errorEl = $('#otherCostError');
+
+      if (!driver) return showFieldError(errorEl, 'Bitte einen Fahrer angeben.');
+      if (!date) return showFieldError(errorEl, 'Bitte ein Datum wählen.');
+      if (!title) return showFieldError(errorEl, 'Bitte eine Bezeichnung angeben.');
+      if (isNaN(amount) || amount <= 0) return showFieldError(errorEl, 'Bitte einen gültigen Betrag angeben.');
+      errorEl.hidden = true;
+
+      Store.upsertOtherCost({ id, driver, date, title, amount, notes });
+      closeModal();
+      showToast('Kosten gespeichert');
+    });
+
     // Add driver form
     $('#addDriverForm').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -716,6 +889,7 @@
     $('#btnAddTrip').addEventListener('click', () => openTripModal());
     $('#btnAddFuel').addEventListener('click', () => openFuelModal());
     $('#btnAddMaintenance').addEventListener('click', () => openMaintenanceModal());
+    $('#btnAddOtherCost').addEventListener('click', () => openOtherCostModal());
     $('#btnConfirmDelete').addEventListener('click', executeDelete);
   }
 
@@ -783,6 +957,22 @@
     openModal('modal-maintenance');
   }
 
+  function openOtherCostModal(id) {
+    const o = id ? Store.state.othercosts.find((x) => x.id === id) : null;
+    $('#otherCostModalTitle').textContent = o ? 'Kosten bearbeiten' : 'Neue sonstige Kosten';
+    $('#otherCostId').value = o ? o.id : '';
+    $('#otherCostError').hidden = true;
+    const knownDriver = o && Store.state.drivers.includes(o.driver);
+    $('#otherCostDriver').value = o ? (knownDriver ? o.driver : OTHER_DRIVER) : Store.state.drivers[0] || OTHER_DRIVER;
+    $('#otherCostOtherWrap').hidden = $('#otherCostDriver').value !== OTHER_DRIVER;
+    $('#otherCostOtherName').value = o && !knownDriver ? o.driver : '';
+    $('#otherCostDate').value = o ? o.date : todayIso();
+    $('#otherCostTitle').value = o ? o.title || '' : '';
+    $('#otherCostAmount').value = o ? o.amount : '';
+    $('#otherCostNotes').value = o ? o.notes || '' : '';
+    openModal('modal-othercost');
+  }
+
   function confirmDelete(type, id, text) {
     pendingDelete = { type, id };
     $('#confirmText').textContent = text;
@@ -794,6 +984,7 @@
     if (type === 'trip') Store.deleteTrip(id);
     if (type === 'fuel') Store.deleteFuelup(id);
     if (type === 'maintenance') Store.deleteMaintenance(id);
+    if (type === 'othercost') Store.deleteOtherCost(id);
     pendingDelete = null;
     closeModal();
     showToast('Eintrag gelöscht');

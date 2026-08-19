@@ -134,6 +134,40 @@
       </div>
     </section>
 
+    <!-- ================= SONSTIGE KOSTEN ================= -->
+    <section class="view" id="view-costs" data-view="costs" hidden>
+      <div class="view-header">
+        <h1 class="view-title">Sonstige Kosten</h1>
+        <button class="fab-inline" id="btnAddOtherCost" type="button" data-testid="button-add-othercost">+ Kosten</button>
+      </div>
+      <p class="card__hint" style="margin:-6px 0 var(--space-4)">Für alles außer Tanken – z. B. Zulassung, Radio, Zubehör, Versicherung.</p>
+
+      <div class="card cost-summary">
+        <h3 class="card__title">Gesamtabrechnung <span id="settlementYear"></span></h3>
+        <p class="card__hint">Tankkosten + sonstige Kosten, anteilig an den gefahrenen Kilometern.</p>
+        <div id="settlementTable"></div>
+        <div class="cost-total-row">
+          <span>Gesamtkosten</span>
+          <strong id="settlementTotal">0 €</strong>
+        </div>
+      </div>
+
+      <div class="card cost-summary">
+        <h3 class="card__title">Wer schuldet wem</h3>
+        <div id="settleUpList"></div>
+      </div>
+
+      <div class="export-row export-row--single">
+        <button class="btn-secondary" id="btnExportSettlementPdf" type="button" data-testid="button-export-settlement-pdf">Abrechnung als PDF</button>
+      </div>
+
+      <h2 class="section-title">Einträge</h2>
+      <div class="list" id="otherCostList"></div>
+      <div class="empty-state" id="otherCostEmpty" hidden>
+        <p>Noch keine sonstigen Kosten erfasst.</p>
+      </div>
+    </section>
+
     <!-- ================= STATISTIK ================= -->
     <section class="view" id="view-stats" data-view="stats" hidden>
       <div class="view-header">
@@ -308,6 +342,10 @@
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22h12M7 22V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v16M7 10h6M17 8l3 2v7a1.5 1.5 0 0 1-3 0V10"/></svg>
       <span>Tanken</span>
     </button>
+    <button class="nav-item" data-view="costs" type="button" data-testid="nav-costs">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M8 15h2M14 15h2"/></svg>
+      <span>Kosten</span>
+    </button>
     <button class="nav-item" data-view="stats" type="button" data-testid="nav-stats">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
       <span>Statistik</span>
@@ -410,6 +448,30 @@
     </form>
   </div>
 
+  <!-- Other cost modal -->
+  <div class="modal" id="modal-othercost" hidden>
+    <div class="modal__header">
+      <h2 id="otherCostModalTitle">Neue sonstige Kosten</h2>
+      <button class="modal__close" data-close type="button" aria-label="Schließen">&times;</button>
+    </div>
+    <form id="otherCostForm" class="form">
+      <input type="hidden" id="otherCostId">
+      <label class="field"><span>Bezahlt von</span>
+        <select id="otherCostDriver" data-testid="select-othercost-driver"></select>
+      </label>
+      <label class="field" id="otherCostOtherWrap" hidden><span>Name des Fahrers</span><input type="text" id="otherCostOtherName" data-testid="input-othercost-other-name"></label>
+      <label class="field"><span>Datum</span><input type="date" id="otherCostDate" data-testid="input-othercost-date"></label>
+      <label class="field"><span>Bezeichnung</span><input type="text" id="otherCostTitle" placeholder="z. B. Zulassung, Autoradio, Versicherung" data-testid="input-othercost-title"></label>
+      <label class="field"><span>Betrag (€)</span><input type="number" step="0.01" id="otherCostAmount" data-testid="input-othercost-amount"></label>
+      <label class="field"><span>Notizen (optional)</span><textarea id="otherCostNotes" rows="2" data-testid="input-othercost-notes"></textarea></label>
+      <p class="field-error" id="otherCostError" hidden></p>
+      <div class="modal__actions">
+        <button type="button" class="btn-secondary" data-close data-testid="button-cancel-othercost">Abbrechen</button>
+        <button type="submit" class="btn-primary" data-testid="button-save-othercost">Speichern</button>
+      </div>
+    </form>
+  </div>
+
   <!-- Confirm delete -->
   <div class="modal modal--sm" id="modal-confirm" hidden>
     <div class="modal__header">
@@ -426,6 +488,8 @@
 </div>
 
 <div class="toast" id="toast" hidden></div>
+
+<div class="print-report" id="printReport"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
