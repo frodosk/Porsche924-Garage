@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="30%" cy="15%" r="90%">
+      <stop offset="0%" stop-color="#232326"/>
+      <stop offset="55%" stop-color="#141416"/>
+      <stop offset="100%" stop-color="#0a0a0b"/>
+    </radialGradient>
+    <linearGradient id="needle" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff2438"/>
+      <stop offset="100%" stop-color="#b80014"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <path d="M256 62 L432 132 V308 C432 388 356 440 256 470 C156 440 80 388 80 308 V132 Z"
+        fill="none" stroke="#f2f1ee" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M158 300 A98 98 0 0 1 354 300" fill="none" stroke="url(#needle)" stroke-width="20" stroke-linecap="round"/>
+  <line x1="256" y1="300" x2="316" y2="230" stroke="url(#needle)" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="300" r="16" fill="url(#needle)"/>
+  <text x="256" y="410" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="70" fill="#f2f1ee" letter-spacing="4">924</text>
+</svg>

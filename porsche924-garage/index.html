@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Porsche 924 Garage</title>
+<meta name="description" content="Digitales Bordbuch für den gemeinsamen Porsche 924 – Kilometer, Tankkosten und Wartung im Blick.">
+<meta name="theme-color" content="#0a0b0d">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="924 Garage">
+
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,500,400&f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="app-header__brand">
+      <svg class="brand-mark" width="34" height="34" viewBox="0 0 48 48" fill="none" aria-label="924 Garage Logo">
+        <path d="M24 3 L43 12 V27 C43 36 35 42 24 45 C13 42 5 36 5 27 V12 Z" stroke="currentColor" stroke-width="2.2" fill="none"/>
+        <path d="M13 27 A11 11 0 0 1 35 27" stroke="var(--color-primary)" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <line x1="24" y1="27" x2="30" y2="19" stroke="var(--color-primary)" stroke-width="2.4" stroke-linecap="round"/>
+        <circle cx="24" cy="27" r="2" fill="var(--color-primary)"/>
+        <text x="24" y="39" text-anchor="middle" font-family="'Cabinet Grotesk', sans-serif" font-weight="700" font-size="8" fill="currentColor" letter-spacing="1">924</text>
+      </svg>
+      <div class="app-header__title">
+        <span class="app-header__eyebrow">Porsche</span>
+        <span class="app-header__name">924 Garage</span>
+      </div>
+    </div>
+    <button class="sync-indicator" id="syncIndicator" type="button" data-testid="button-sync-status" aria-label="Sync-Status">
+      <span class="sync-indicator__dot" id="syncDot"></span>
+      <span class="sync-indicator__label" id="syncLabel">Lokal</span>
+    </button>
+  </header>
+
+  <!-- MAIN VIEWS -->
+  <main class="app-main" id="appMain">
+
+    <!-- ================= DASHBOARD ================= -->
+    <section class="view" id="view-dashboard" data-view="dashboard">
+      <div class="hero-card">
+        <div class="hero-card__glow"></div>
+        <div class="hero-card__top">
+          <span class="hero-card__label" id="dashVehicleName">Porsche 924</span>
+          <span class="hero-card__year" id="dashYear">2026</span>
+        </div>
+        <div class="odometer" id="dashOdometer">— km</div>
+        <div class="hero-card__sub">Gesamtkilometerstand</div>
+
+        <div class="limit-block">
+          <div class="limit-block__row">
+            <span id="dashYearKm">0 km</span>
+            <span class="limit-block__sep">/</span>
+            <span id="dashYearLimit">4.000 km</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="dashProgressFill" style="width:0%"></div>
+          </div>
+          <div class="limit-block__remaining">
+            Noch verfügbar: <strong id="dashRemaining">4.000 km</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="quick-actions">
+        <button class="quick-action quick-action--primary" id="btnQuickTrip" type="button" data-testid="button-quick-trip">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Neue Fahrt
+        </button>
+        <button class="quick-action" id="btnQuickFuel" type="button" data-testid="button-quick-fuel">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22h12M7 22V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v16M7 10h6M17 8l3 2v7a1.5 1.5 0 0 1-3 0V10"/></svg>
+          Tanken
+        </button>
+      </div>
+
+      <div id="dashReminders"></div>
+
+      <h2 class="section-title">Fahrer-Ranking <span class="section-title__year" id="dashDriverYear"></span></h2>
+      <div class="driver-list" id="dashDriverList"></div>
+    </section>
+
+    <!-- ================= FAHRTEN ================= -->
+    <section class="view" id="view-trips" data-view="trips" hidden>
+      <div class="view-header">
+        <h1 class="view-title">Fahrtenbuch</h1>
+        <button class="fab-inline" id="btnAddTrip" type="button" data-testid="button-add-trip">+ Fahrt</button>
+      </div>
+      <div class="chip-row" id="tripDriverFilter"></div>
+      <div class="list" id="tripList"></div>
+      <div class="empty-state" id="tripEmpty" hidden>
+        <p>Noch keine Fahrten erfasst.</p>
+      </div>
+    </section>
+
+    <!-- ================= TANKEN ================= -->
+    <section class="view" id="view-fuel" data-view="fuel" hidden>
+      <div class="view-header">
+        <h1 class="view-title">Tankbuch</h1>
+        <button class="fab-inline" id="btnAddFuel" type="button" data-testid="button-add-fuel">+ Tankung</button>
+      </div>
+
+      <div class="card cost-summary">
+        <h3 class="card__title">Tankkosten <span id="fuelYear"></span></h3>
+        <div id="fuelCostTable"></div>
+        <div class="cost-total-row">
+          <span>Gesamt</span>
+          <strong id="fuelCostTotal">0 €</strong>
+        </div>
+      </div>
+
+      <div class="card cost-summary">
+        <h3 class="card__title">Faire Kostenverteilung</h3>
+        <p class="card__hint">Basierend auf gefahrenen Kilometern pro Fahrer.</p>
+        <div id="fairSplitTable"></div>
+      </div>
+
+      <h2 class="section-title">Tankungen</h2>
+      <div class="list" id="fuelList"></div>
+      <div class="empty-state" id="fuelEmpty" hidden>
+        <p>Noch keine Tankungen erfasst.</p>
+      </div>
+    </section>
+
+    <!-- ================= STATISTIK ================= -->
+    <section class="view" id="view-stats" data-view="stats" hidden>
+      <div class="view-header">
+        <h1 class="view-title">Statistik</h1>
+      </div>
+
+      <div class="card">
+        <h3 class="card__title">Kilometer pro Fahrer</h3>
+        <canvas id="chartKm" height="180"></canvas>
+      </div>
+
+      <div class="card">
+        <h3 class="card__title">Tankkosten pro Fahrer</h3>
+        <canvas id="chartCost" height="180"></canvas>
+      </div>
+
+      <div class="card">
+        <h3 class="card__title">Jahresübersicht</h3>
+        <div id="statsYearTable"></div>
+      </div>
+
+      <div class="export-row">
+        <button class="btn-secondary" id="btnExportCsv" type="button" data-testid="button-export-csv">CSV exportieren</button>
+        <button class="btn-secondary" id="btnExportPdf" type="button" data-testid="button-export-pdf">Als PDF drucken</button>
+      </div>
+    </section>
+
+    <!-- ================= MEHR ================= -->
+    <section class="view" id="view-more" data-view="more" hidden>
+      <div class="view-header">
+        <h1 class="view-title">Mehr</h1>
+      </div>
+
+      <div class="more-list">
+        <button class="more-item" data-panel="panel-vehicle" type="button" data-testid="button-open-vehicle">
+          <span class="more-item__icon">🚗</span>
+          <span>Fahrzeugdaten</span>
+          <span class="more-item__chevron">›</span>
+        </button>
+        <button class="more-item" data-panel="panel-maintenance" type="button" data-testid="button-open-maintenance">
+          <span class="more-item__icon">🔧</span>
+          <span>Wartung</span>
+          <span class="more-item__chevron">›</span>
+        </button>
+        <button class="more-item" data-panel="panel-drivers" type="button" data-testid="button-open-drivers">
+          <span class="more-item__icon">👥</span>
+          <span>Fahrer-Verwaltung</span>
+          <span class="more-item__chevron">›</span>
+        </button>
+        <button class="more-item" data-panel="panel-settings" type="button" data-testid="button-open-settings">
+          <span class="more-item__icon">⚙️</span>
+          <span>Einstellungen</span>
+          <span class="more-item__chevron">›</span>
+        </button>
+        <button class="more-item" data-panel="panel-sync" type="button" data-testid="button-open-sync">
+          <span class="more-item__icon">☁️</span>
+          <span>Synchronisierung</span>
+          <span class="more-item__chevron">›</span>
+        </button>
+      </div>
+
+      <!-- Panel: Fahrzeugdaten -->
+      <div class="panel" id="panel-vehicle" hidden>
+        <button class="panel-back" data-back type="button">‹ Zurück</button>
+        <h2 class="section-title">Fahrzeugdaten</h2>
+        <div class="card">
+          <div class="vehicle-photo" id="vehiclePhotoWrap">
+            <img id="vehiclePhoto" alt="Foto des Porsche 924" hidden>
+            <label class="vehicle-photo__placeholder" id="vehiclePhotoPlaceholder">
+              <input type="file" accept="image/*" id="vehiclePhotoInput" hidden data-testid="input-vehicle-photo">
+              <span>+ Foto hinzufügen</span>
+            </label>
+          </div>
+          <form id="vehicleForm" class="form">
+            <label class="field"><span>Fahrzeugname</span><input type="text" id="vName" data-testid="input-vehicle-name"></label>
+            <label class="field"><span>Baujahr</span><input type="number" id="vYear" data-testid="input-vehicle-year"></label>
+            <label class="field"><span>Motor</span><input type="text" id="vEngine" placeholder="z. B. 2.0 Reihenvierzylinder" data-testid="input-vehicle-engine"></label>
+            <label class="field"><span>PS</span><input type="number" id="vPs" data-testid="input-vehicle-ps"></label>
+            <label class="field"><span>Fahrgestellnummer (optional)</span><input type="text" id="vVin" data-testid="input-vehicle-vin"></label>
+            <button class="btn-primary" type="submit" data-testid="button-save-vehicle">Speichern</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Panel: Wartung -->
+      <div class="panel" id="panel-maintenance" hidden>
+        <button class="panel-back" data-back type="button">‹ Zurück</button>
+        <div class="view-header">
+          <h2 class="section-title" style="margin:0">Wartung</h2>
+          <button class="fab-inline" id="btnAddMaintenance" type="button" data-testid="button-add-maintenance">+ Eintrag</button>
+        </div>
+        <div id="maintenanceReminders"></div>
+        <div class="list" id="maintenanceList"></div>
+        <div class="empty-state" id="maintenanceEmpty" hidden><p>Noch keine Wartungseinträge.</p></div>
+      </div>
+
+      <!-- Panel: Fahrer-Verwaltung -->
+      <div class="panel" id="panel-drivers" hidden>
+        <button class="panel-back" data-back type="button">‹ Zurück</button>
+        <h2 class="section-title">Fahrer-Verwaltung</h2>
+        <div class="card">
+          <div class="list" id="driverManageList"></div>
+          <form id="addDriverForm" class="inline-form">
+            <input type="text" id="newDriverName" placeholder="Neuer Fahrername" data-testid="input-new-driver">
+            <button class="btn-primary" type="submit" data-testid="button-add-driver">Hinzufügen</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Panel: Einstellungen -->
+      <div class="panel" id="panel-settings" hidden>
+        <button class="panel-back" data-back type="button">‹ Zurück</button>
+        <h2 class="section-title">Einstellungen</h2>
+        <div class="card">
+          <form id="settingsForm" class="form">
+            <label class="field"><span>Jahreslimit (km)</span><input type="number" id="sYearLimit" data-testid="input-year-limit"></label>
+            <label class="field"><span>Start-Kilometerstand</span><input type="number" id="sInitialOdo" data-testid="input-initial-odo"></label>
+            <label class="field"><span>Nächster Ölwechsel bei (km)</span><input type="number" id="sNextOil" data-testid="input-next-oil"></label>
+            <label class="field"><span>Nächster TÜV/HU (Datum)</span><input type="date" id="sNextTuv" data-testid="input-next-tuv"></label>
+            <button class="btn-primary" type="submit" data-testid="button-save-settings">Speichern</button>
+          </form>
+        </div>
+        <div class="card">
+          <h3 class="card__title">Datensicherung</h3>
+          <p class="card__hint">Exportiere alle Daten als Backup-Datei oder importiere ein Backup.</p>
+          <div class="export-row">
+            <button class="btn-secondary" id="btnBackupExport" type="button" data-testid="button-backup-export">Backup exportieren</button>
+            <label class="btn-secondary" style="text-align:center;cursor:pointer">
+              Backup importieren
+              <input type="file" accept="application/json" id="btnBackupImport" hidden data-testid="input-backup-import">
+            </label>
+          </div>
+        </div>
+        <div class="card app-info">
+          <p>Porsche 924 Garage · Version 1.0</p>
+          <p class="card__hint">Für Silas, Jason, Elias &amp; Samuel.</p>
+        </div>
+      </div>
+
+      <!-- Panel: Sync -->
+      <div class="panel" id="panel-sync" hidden>
+        <button class="panel-back" data-back type="button">‹ Zurück</button>
+        <h2 class="section-title">Synchronisierung</h2>
+        <div class="card" id="syncStatusCard">
+          <h3 class="card__title">Status</h3>
+          <p id="syncStatusText" class="card__hint">Lokal gespeichert (kein Cloud-Sync konfiguriert).</p>
+        </div>
+        <div class="card">
+          <h3 class="card__title">Cloud-Sync einrichten</h3>
+          <p class="card__hint">
+            Trage in <code>js/firebase-config.js</code> die kostenlosen Firebase-Zugangsdaten eurer Gruppe ein
+            (Anleitung in der README). Danach werden alle Fahrten, Tankungen und Wartungen automatisch
+            zwischen allen Geräten abgeglichen.
+          </p>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav" id="bottomNav">
+    <button class="nav-item is-active" data-view="dashboard" type="button" data-testid="nav-dashboard">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
+      <span>Start</span>
+    </button>
+    <button class="nav-item" data-view="trips" type="button" data-testid="nav-trips">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-5.5-2V4L9 6m0 14l6-2m-6 2V6m6 12l5.5 2V6L15 4m0 14V4m0 0L9 6"/></svg>
+      <span>Fahrten</span>
+    </button>
+    <button class="nav-item" data-view="fuel" type="button" data-testid="nav-fuel">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22h12M7 22V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v16M7 10h6M17 8l3 2v7a1.5 1.5 0 0 1-3 0V10"/></svg>
+      <span>Tanken</span>
+    </button>
+    <button class="nav-item" data-view="stats" type="button" data-testid="nav-stats">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
+      <span>Statistik</span>
+    </button>
+    <button class="nav-item" data-view="more" type="button" data-testid="nav-more">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
+      <span>Mehr</span>
+    </button>
+  </nav>
+
+</div>
+
+<!-- ================= MODALS ================= -->
+<div class="modal-overlay" id="modalOverlay" hidden>
+
+  <!-- Trip modal -->
+  <div class="modal" id="modal-trip" hidden>
+    <div class="modal__header">
+      <h2 id="tripModalTitle">Neue Fahrt</h2>
+      <button class="modal__close" data-close type="button" aria-label="Schließen">&times;</button>
+    </div>
+    <form id="tripForm" class="form">
+      <input type="hidden" id="tripId">
+      <label class="field"><span>Fahrer</span>
+        <select id="tripDriver" data-testid="select-trip-driver"></select>
+      </label>
+      <label class="field" id="tripOtherWrap" hidden><span>Name des Fahrers</span><input type="text" id="tripOtherName" data-testid="input-trip-other-name"></label>
+      <label class="field"><span>Datum</span><input type="date" id="tripDate" data-testid="input-trip-date"></label>
+      <div class="field-row">
+        <label class="field"><span>Start-Kilometerstand</span><input type="number" id="tripStart" inputmode="numeric" data-testid="input-trip-start"></label>
+        <label class="field"><span>End-Kilometerstand</span><input type="number" id="tripEnd" inputmode="numeric" data-testid="input-trip-end"></label>
+      </div>
+      <div class="calc-display">
+        Gefahren: <strong id="tripCalc">0 km</strong>
+      </div>
+      <p class="field-error" id="tripError" hidden></p>
+      <div class="modal__actions">
+        <button type="button" class="btn-secondary" data-close data-testid="button-cancel-trip">Abbrechen</button>
+        <button type="submit" class="btn-primary" data-testid="button-save-trip">Speichern</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Fuel modal -->
+  <div class="modal" id="modal-fuel" hidden>
+    <div class="modal__header">
+      <h2 id="fuelModalTitle">Neue Tankung</h2>
+      <button class="modal__close" data-close type="button" aria-label="Schließen">&times;</button>
+    </div>
+    <form id="fuelForm" class="form">
+      <input type="hidden" id="fuelId">
+      <label class="field"><span>Fahrer</span>
+        <select id="fuelDriver" data-testid="select-fuel-driver"></select>
+      </label>
+      <label class="field" id="fuelOtherWrap" hidden><span>Name des Fahrers</span><input type="text" id="fuelOtherName" data-testid="input-fuel-other-name"></label>
+      <label class="field"><span>Datum</span><input type="date" id="fuelDate" data-testid="input-fuel-date"></label>
+      <div class="field-row">
+        <label class="field"><span>Liter</span><input type="number" step="0.01" id="fuelLiters" data-testid="input-fuel-liters"></label>
+        <label class="field"><span>Betrag (€)</span><input type="number" step="0.01" id="fuelAmount" data-testid="input-fuel-amount"></label>
+      </div>
+      <div class="calc-display">
+        Preis/Liter: <strong id="fuelCalc">– €</strong>
+      </div>
+      <label class="field"><span>Tankstelle (optional)</span><input type="text" id="fuelStation" data-testid="input-fuel-station"></label>
+      <label class="field"><span>Beleg-Foto (optional)</span><input type="file" accept="image/*" id="fuelPhoto" data-testid="input-fuel-photo"></label>
+      <img id="fuelPhotoPreview" class="photo-preview" hidden>
+      <div class="modal__actions">
+        <button type="button" class="btn-secondary" data-close data-testid="button-cancel-fuel">Abbrechen</button>
+        <button type="submit" class="btn-primary" data-testid="button-save-fuel">Speichern</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Maintenance modal -->
+  <div class="modal" id="modal-maintenance" hidden>
+    <div class="modal__header">
+      <h2 id="maintenanceModalTitle">Neuer Wartungseintrag</h2>
+      <button class="modal__close" data-close type="button" aria-label="Schließen">&times;</button>
+    </div>
+    <form id="maintenanceForm" class="form">
+      <input type="hidden" id="maintenanceId">
+      <label class="field"><span>Art</span>
+        <select id="maintenanceType" data-testid="select-maintenance-type">
+          <option>Ölwechsel</option>
+          <option>TÜV/HU</option>
+          <option>Reifenwechsel</option>
+          <option>Reparatur</option>
+          <option>Ersatzteile</option>
+          <option>Sonstiges</option>
+        </select>
+      </label>
+      <label class="field"><span>Datum</span><input type="date" id="maintenanceDate" data-testid="input-maintenance-date"></label>
+      <label class="field"><span>Kilometerstand</span><input type="number" id="maintenanceKm" data-testid="input-maintenance-km"></label>
+      <label class="field"><span>Kosten (€)</span><input type="number" step="0.01" id="maintenanceCost" data-testid="input-maintenance-cost"></label>
+      <label class="field"><span>Notizen</span><textarea id="maintenanceNotes" rows="3" data-testid="input-maintenance-notes"></textarea></label>
+      <div class="modal__actions">
+        <button type="button" class="btn-secondary" data-close data-testid="button-cancel-maintenance">Abbrechen</button>
+        <button type="submit" class="btn-primary" data-testid="button-save-maintenance">Speichern</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Confirm delete -->
+  <div class="modal modal--sm" id="modal-confirm" hidden>
+    <div class="modal__header">
+      <h2>Wirklich löschen?</h2>
+      <button class="modal__close" data-close type="button" aria-label="Schließen">&times;</button>
+    </div>
+    <p id="confirmText" class="card__hint">Dieser Eintrag wird endgültig entfernt.</p>
+    <div class="modal__actions">
+      <button type="button" class="btn-secondary" data-close data-testid="button-cancel-delete">Abbrechen</button>
+      <button type="button" class="btn-danger" id="btnConfirmDelete" data-testid="button-confirm-delete">Löschen</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
