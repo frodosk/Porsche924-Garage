@@ -40,21 +40,14 @@
 
    ========================================================= */
 
-window.FIREBASE_CONFIG = null;
-
-/* Beispiel — durch eure echten Werte ersetzen und die Zeile oben
-   auskommentieren bzw. löschen:
-
 window.FIREBASE_CONFIG = {
-  apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  apiKey: "AIzaSyDYD_GmD8izNMKssw8wxm9X6ZtERmsvOKc",
   authDomain: "porsche924-garage.firebaseapp.com",
   projectId: "porsche924-garage",
-  storageBucket: "porsche924-garage.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:abcdef1234567890abcdef"
+  storageBucket: "porsche924-garage.firebasestorage.app",
+  messagingSenderId: "781942671516",
+  appId: "1:781942671516:web:84c309b3ab22547846c559"
 };
-
-*/
 
 /* Optional: eindeutige Kennung, falls mehrere Fahrzeuge/Gruppen
    dieselbe Firebase-Datenbank nutzen sollen. Für ein einzelnes Auto

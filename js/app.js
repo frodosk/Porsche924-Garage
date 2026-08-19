@@ -18,6 +18,8 @@
      --------------------------------------------------------- */
 
   function init() {
+    setupLockScreen();
+
     Store.load();
     Store.subscribe(renderAll);
 
@@ -31,6 +33,55 @@
 
     renderAll();
     registerServiceWorker();
+  }
+
+  /* ---------------------------------------------------------
+     Lock Screen (Kennwortsperre)
+     --------------------------------------------------------- */
+
+  function setupLockScreen() {
+    // SHA-256 von TEKO924H — Klartext bewusst nicht im Quellcode.
+    const TARGET_HASH = '46742b87312c2ccd0df185c1c1caa657ba85f9504b8fef9cdbcd7d8ecacc2732';
+    const form = $('#lockForm');
+    const input = $('#lockPassword');
+    const errorEl = $('#lockError');
+    const submitBtn = $('.lock-screen__submit');
+    if (!form || !input) return;
+
+    async function sha256Hex(text) {
+      const enc = new TextEncoder().encode(text);
+      const buf = await crypto.subtle.digest('SHA-256', enc);
+      return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const value = (input.value || '').trim().toUpperCase();
+      if (!value) return;
+
+      let hash;
+      try {
+        hash = await sha256Hex(value);
+      } catch (err) {
+        if (errorEl) errorEl.hidden = false;
+        return;
+      }
+
+      if (hash === TARGET_HASH) {
+        if (errorEl) errorEl.hidden = true;
+        try { localStorage.setItem('p924_unlocked', 'yes'); } catch (e) { /* ignore */ }
+        document.body.classList.remove('is-locked');
+        input.value = '';
+      } else {
+        if (errorEl) errorEl.hidden = false;
+        input.value = '';
+        input.focus();
+        if (submitBtn) {
+          submitBtn.classList.remove('is-shaking');
+          requestAnimationFrame(() => submitBtn.classList.add('is-shaking'));
+        }
+      }
+    });
   }
 
   function renderAll() {

@@ -21,7 +21,36 @@
 
 <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="is-locked">
+<script>
+  /* Sofortprüfung vor dem ersten Rendern, damit die App bei bereits
+     entsperrten Geräten nicht kurz aufblitzt. */
+  (function () {
+    try {
+      if (localStorage.getItem('p924_unlocked') === 'yes') {
+        document.body.classList.remove('is-locked');
+      }
+    } catch (e) { /* localStorage nicht verfügbar, Sperre bleibt aktiv */ }
+  })();
+</script>
+
+<div class="lock-screen" id="lockScreen">
+  <form class="lock-screen__card" id="lockForm" autocomplete="off">
+    <svg class="brand-mark" width="44" height="44" viewBox="0 0 48 48" fill="none" aria-label="924 Garage Logo">
+      <path d="M24 3 L43 12 V27 C43 36 35 42 24 45 C13 42 5 36 5 27 V12 Z" stroke="currentColor" stroke-width="2.2" fill="none"/>
+      <path d="M13 27 A11 11 0 0 1 35 27" stroke="var(--color-primary)" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <line x1="24" y1="27" x2="30" y2="19" stroke="var(--color-primary)" stroke-width="2.4" stroke-linecap="round"/>
+      <circle cx="24" cy="27" r="2" fill="var(--color-primary)"/>
+      <text x="24" y="39" text-anchor="middle" font-family="'Cabinet Grotesk', sans-serif" font-weight="700" font-size="8" fill="currentColor" letter-spacing="1">924</text>
+    </svg>
+    <h1 class="lock-screen__title">924 Garage</h1>
+    <p class="lock-screen__subtitle">Nur für die Crew. Kennwort eingeben, um fortzufahren.</p>
+    <input class="lock-screen__input" id="lockPassword" type="password" inputmode="text" autocapitalize="characters" placeholder="Kennwort" data-testid="input-lock-password" required>
+    <p class="lock-screen__error" id="lockError" hidden>Falsches Kennwort. Versuch's noch mal.</p>
+    <button class="btn-primary lock-screen__submit" type="submit" data-testid="button-unlock">Entsperren</button>
+  </form>
+</div>
+
 
 <div class="app-shell">
 
@@ -316,11 +345,11 @@
           <p id="syncStatusText" class="card__hint">Lokal gespeichert (kein Cloud-Sync konfiguriert).</p>
         </div>
         <div class="card">
-          <h3 class="card__title">Cloud-Sync einrichten</h3>
+          <h3 class="card__title">Cloud-Sync aktiv</h3>
           <p class="card__hint">
-            Trage in <code>js/firebase-config.js</code> die kostenlosen Firebase-Zugangsdaten eurer Gruppe ein
-            (Anleitung in der README). Danach werden alle Fahrten, Tankungen und Wartungen automatisch
-            zwischen allen Geräten abgeglichen.
+            Alle vier Fahrer teilen sich eine gemeinsame Cloud-Datenbank. Fahrten, Tankungen, Wartungen
+            und sonstige Kosten werden automatisch zwischen allen Geräten abgeglichen — sobald ein Gerät
+            online ist, sieht es den aktuellen Stand der anderen.
           </p>
         </div>
       </div>

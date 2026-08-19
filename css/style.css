@@ -649,3 +649,76 @@ a, button, [role='button'], input, textarea, select {
 
 /* Global safety net: [hidden] must always win over component display rules */
 [hidden] { display: none !important; }
+
+/* =========================================================
+   Lock Screen (Kennwortsperre)
+   ========================================================= */
+.lock-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  background: var(--color-bg);
+  background-image:
+    radial-gradient(circle at 15% 0%, color-mix(in srgb, var(--color-primary) 10%, transparent) 0%, transparent 45%),
+    repeating-linear-gradient(135deg, transparent 0, transparent 2px, rgba(255,255,255,0.012) 2px, rgba(255,255,255,0.012) 3px);
+}
+body:not(.is-locked) .lock-screen { display: none; }
+body.is-locked .app-shell { display: none; }
+
+.lock-screen__card {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-7) var(--space-6);
+  box-shadow: var(--shadow-lg);
+  color: var(--color-text);
+}
+.lock-screen__title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  margin: 0;
+}
+.lock-screen__subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-2);
+}
+.lock-screen__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  font-size: var(--text-base);
+  text-align: center;
+  letter-spacing: 2px;
+}
+.lock-screen__input:focus { outline: none; border-color: var(--color-primary); }
+.lock-screen__error {
+  color: var(--color-error);
+  font-size: var(--text-xs);
+  margin: 0;
+}
+.lock-screen__submit { width: 100%; margin-top: var(--space-1); }
+.lock-screen__submit.is-shaking { animation: lock-shake 320ms ease; }
+@keyframes lock-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
