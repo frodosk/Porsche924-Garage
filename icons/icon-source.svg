@@ -13,6 +13,7 @@
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
   <path d="M256 62 L432 132 V308 C432 388 356 440 256 470 C156 440 80 388 80 308 V132 Z"
         fill="none" stroke="#f2f1ee" stroke-width="14" stroke-linejoin="round"/>
+  <text x="256" y="178" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="46" fill="#f2f1ee" letter-spacing="5">KORTES</text>
   <path d="M158 300 A98 98 0 0 1 354 300" fill="none" stroke="url(#needle)" stroke-width="20" stroke-linecap="round"/>
   <line x1="256" y1="300" x2="316" y2="230" stroke="url(#needle)" stroke-width="20" stroke-linecap="round"/>
   <circle cx="256" cy="300" r="16" fill="url(#needle)"/>

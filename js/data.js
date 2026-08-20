@@ -217,6 +217,12 @@ const Calc = {
   },
 
   // ---- Sonstige Kosten (Zulassung, Radio, Zubehör, etc.) ----
+  // Kostenart eines Eintrags: 'km' = anteilig an gefahrenen Kilometern (Standard, z. B. Versicherung),
+  // 'equal' = einmalige Anschaffung, zu gleichen Teilen unter allen Fahrern aufgeteilt (z. B. neues Radio).
+  otherCostSplitType(o) {
+    return o && o.splitType === 'equal' ? 'equal' : 'km';
+  },
+
   otherCostsForYear(state, year) {
     return state.othercosts.filter((o) => o.date && new Date(o.date).getFullYear() === year);
   },
@@ -235,7 +241,21 @@ const Calc = {
     return this.otherCostsForYear(state, year).reduce((sum, o) => sum + (o.amount || 0), 0);
   },
 
-  // ---- Gesamtabrechnung: Tankkosten + Sonstige Kosten, anteilig an gefahrenen km ----
+  // Summe der "anteilig an km"-Kosten (sonstige Kosten, ohne Tanken)
+  totalOtherCostKmYear(state, year) {
+    return this.otherCostsForYear(state, year)
+      .filter((o) => this.otherCostSplitType(o) === 'km')
+      .reduce((sum, o) => sum + (o.amount || 0), 0);
+  },
+
+  // Summe der "einmalig, gleich verteilt"-Kosten
+  totalOtherCostEqualYear(state, year) {
+    return this.otherCostsForYear(state, year)
+      .filter((o) => this.otherCostSplitType(o) === 'equal')
+      .reduce((sum, o) => sum + (o.amount || 0), 0);
+  },
+
+  // ---- Gesamtabrechnung: wer hat tatsächlich bezahlt (Tanken + alle sonstigen Kosten) ----
   combinedCostByDriver(state, year) {
     const fuel = this.costByDriver(state, year);
     const other = this.otherCostsByDriver(state, year);
@@ -251,24 +271,38 @@ const Calc = {
     return this.totalCostYear(state, year) + this.totalOtherCostYear(state, year);
   },
 
+  // ---- Gesamtabrechnung: Tankkosten + "anteilig an km"-Kosten werden nach gefahrenen Kilometern verteilt,
+  //      "einmalig"-Kosten werden zu gleichen Teilen unter allen Fahrern aufgeteilt ----
   fairSplitAll(state, year) {
-    return this._splitByCost(state, year, this.combinedCostByDriver(state, year), this.combinedTotalCostYear(state, year));
+    const kmBasedTotal = this.totalCostYear(state, year) + this.totalOtherCostKmYear(state, year);
+    const equalBasedTotal = this.totalOtherCostEqualYear(state, year);
+    const paidMap = this.combinedCostByDriver(state, year);
+    return this._splitMixed(state, year, paidMap, kmBasedTotal, equalBasedTotal);
   },
 
   _splitByCost(state, year, costMap, totalCost) {
+    return this._splitMixed(state, year, costMap, totalCost, 0);
+  },
+
+  _splitMixed(state, year, paidMap, kmBasedTotal, equalBasedTotal) {
     const kmMap = this.kmByDriver(state, year);
     const totalKm = Object.values(kmMap).reduce((a, b) => a + b, 0);
-    const names = new Set([...Object.keys(kmMap), ...Object.keys(costMap)]);
+    const numDrivers = state.drivers.length || 1;
+    const equalShare = equalBasedTotal / numDrivers;
+    const names = new Set([...state.drivers, ...Object.keys(kmMap), ...Object.keys(paidMap)]);
     const rows = [];
     names.forEach((name) => {
       const km = kmMap[name] || 0;
-      const paid = costMap[name] || 0;
+      const paid = paidMap[name] || 0;
       const percent = totalKm > 0 ? km / totalKm : 0;
-      const shouldPay = totalCost * percent;
-      rows.push({ name, km, percent, paid, shouldPay, balance: paid - shouldPay });
+      const isRegisteredDriver = state.drivers.includes(name);
+      const kmSharePay = kmBasedTotal * percent;
+      const equalSharePay = isRegisteredDriver ? equalShare : 0;
+      const shouldPay = kmSharePay + equalSharePay;
+      rows.push({ name, km, percent, paid, shouldPay, equalSharePay, balance: paid - shouldPay });
     });
     return rows
-      .filter((r) => r.km > 0 || r.paid > 0)
+      .filter((r) => r.km > 0 || r.paid > 0 || state.drivers.includes(r.name))
       .sort((a, b) => b.km - a.km);
   },
 

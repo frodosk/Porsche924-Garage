@@ -570,19 +570,24 @@
     $('#otherCostEmpty').hidden = entries.length > 0;
     listEl.innerHTML = entries
       .map(
-        (o) => `
+        (o) => {
+          const splitType = Calc.otherCostSplitType(o);
+          const splitLabel = splitType === 'equal' ? 'Gleich verteilt' : 'Anteilig an km';
+          return `
       <div class="entry-row" data-testid="row-othercost-${o.id}">
         <div class="entry-row__avatar">${escapeHtml(Fmt.initials(o.driver))}</div>
         <div class="entry-row__body">
           <div class="entry-row__title">${escapeHtml(o.title || '–')}</div>
           <div class="entry-row__meta">${Fmt.date(o.date)} · ${escapeHtml(o.driver || '–')}${o.notes ? ' · ' + escapeHtml(o.notes) : ''}</div>
+          <span class="entry-row__badge ${splitType === 'equal' ? 'entry-row__badge--equal' : ''}">${splitLabel}</span>
         </div>
         <div class="entry-row__value">${Fmt.eur(o.amount)}</div>
         <div class="entry-row__actions">
           <button class="entry-row__icon-btn" data-edit-othercost="${o.id}" type="button" aria-label="Bearbeiten" data-testid="button-edit-othercost-${o.id}">✎</button>
           <button class="entry-row__icon-btn" data-delete-othercost="${o.id}" type="button" aria-label="Löschen" data-testid="button-delete-othercost-${o.id}">🗑</button>
         </div>
-      </div>`
+      </div>`;
+        }
       )
       .join('');
 
@@ -627,13 +632,16 @@
     const otherEntries = Calc.otherCostsForYear(state, year).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
     const otherHtml = otherEntries.length
       ? otherEntries
-          .map((o) => `<tr><td>${Fmt.date(o.date)}</td><td>${escapeHtml(o.driver || '–')}</td><td>${escapeHtml(o.title || '–')}</td><td class="num">${Fmt.eur(o.amount)}</td></tr>`)
+          .map((o) => {
+            const label = Calc.otherCostSplitType(o) === 'equal' ? 'Gleich verteilt' : 'Anteilig an km';
+            return `<tr><td>${Fmt.date(o.date)}</td><td>${escapeHtml(o.driver || '–')}</td><td>${escapeHtml(o.title || '–')}</td><td>${label}</td><td class="num">${Fmt.eur(o.amount)}</td></tr>`;
+          })
           .join('')
-      : '<tr><td colspan="4">Keine sonstigen Kosten in diesem Jahr.</td></tr>';
+      : '<tr><td colspan="5">Keine sonstigen Kosten in diesem Jahr.</td></tr>';
 
     const html = `
       <h1>${escapeHtml(v.name || 'Porsche 924')} – Kostenabrechnung ${year}</h1>
-      <p class="pr-sub">Erstellt am ${Fmt.date(todayIso())} · Kosten anteilig an den gefahrenen Kilometern aufgeteilt (Tanken + sonstige Kosten)</p>
+      <p class="pr-sub">Erstellt am ${Fmt.date(todayIso())} · Tanken und "anteilig an km"-Kosten werden nach gefahrenen Kilometern verteilt, "gleich verteilt"-Kosten zu gleichen Teilen unter allen Fahrern</p>
 
       <h2>Gesamtabrechnung</h2>
       <table>
@@ -647,11 +655,11 @@
 
       <h2>Sonstige Kosten im Detail</h2>
       <table>
-        <thead><tr><th>Datum</th><th>Bezahlt von</th><th>Bezeichnung</th><th class="num">Betrag</th></tr></thead>
+        <thead><tr><th>Datum</th><th>Bezahlt von</th><th>Bezeichnung</th><th>Kostenart</th><th class="num">Betrag</th></tr></thead>
         <tbody>${otherHtml}</tbody>
       </table>
 
-      <p class="pr-footer">Porsche 924 Garage – automatisch erstellte Abrechnung. Positiver Saldo = Guthaben, negativer Saldo = offene Zahlung.</p>
+      <p class="pr-footer">Kortes 924 Garage – automatisch erstellte Abrechnung. Positiver Saldo = Guthaben, negativer Saldo = offene Zahlung.</p>
     `;
 
     const report = $('#printReport');
@@ -798,6 +806,19 @@
       $('#otherCostOtherWrap').hidden = otherCostDriver.value !== OTHER_DRIVER;
     });
 
+    const splitTypeHints = {
+      km: 'Wird anteilig nach gefahrenen Kilometern verteilt – z. B. Versicherung, Zulassung.',
+      equal: 'Wird zu gleichen Teilen unter allen Fahrern aufgeteilt – z. B. neues Radio, Zubehör.',
+    };
+    $all('.chip', $('#otherCostSplitTypeRow')).forEach((chip) => {
+      chip.addEventListener('click', () => {
+        $all('.chip', $('#otherCostSplitTypeRow')).forEach((c) => c.classList.remove('is-active'));
+        chip.classList.add('is-active');
+        $('#otherCostSplitType').value = chip.dataset.splitType;
+        $('#otherCostSplitTypeHint').textContent = splitTypeHints[chip.dataset.splitType] || splitTypeHints.km;
+      });
+    });
+
     $('#otherCostForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const id = $('#otherCostId').value || undefined;
@@ -805,6 +826,7 @@
       const date = $('#otherCostDate').value;
       const title = $('#otherCostTitle').value.trim();
       const amount = Number($('#otherCostAmount').value);
+      const splitType = $('#otherCostSplitType').value === 'equal' ? 'equal' : 'km';
       const notes = $('#otherCostNotes').value.trim();
       const errorEl = $('#otherCostError');
 
@@ -814,7 +836,7 @@
       if (isNaN(amount) || amount <= 0) return showFieldError(errorEl, 'Bitte einen gültigen Betrag angeben.');
       errorEl.hidden = true;
 
-      Store.upsertOtherCost({ id, driver, date, title, amount, notes });
+      Store.upsertOtherCost({ id, driver, date, title, amount, splitType, notes });
       closeModal();
       showToast('Kosten gespeichert');
     });
@@ -1021,6 +1043,13 @@
     $('#otherCostTitle').value = o ? o.title || '' : '';
     $('#otherCostAmount').value = o ? o.amount : '';
     $('#otherCostNotes').value = o ? o.notes || '' : '';
+    const splitType = Calc.otherCostSplitType(o);
+    $('#otherCostSplitType').value = splitType;
+    const splitRow = $('#otherCostSplitTypeRow');
+    $all('.chip', splitRow).forEach((c) => c.classList.toggle('is-active', c.dataset.splitType === splitType));
+    $('#otherCostSplitTypeHint').textContent = splitType === 'equal'
+      ? 'Wird zu gleichen Teilen unter allen Fahrern aufgeteilt – z. B. neues Radio, Zubehör.'
+      : 'Wird anteilig nach gefahrenen Kilometern verteilt – z. B. Versicherung, Zulassung.';
     openModal('modal-othercost');
   }
 

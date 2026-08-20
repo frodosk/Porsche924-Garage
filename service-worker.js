@@ -1,6 +1,6 @@
 /* Porsche 924 Garage — Service Worker (App-Shell-Caching) */
 
-const CACHE_NAME = 'p924-garage-v3';
+const CACHE_NAME = 'p924-garage-v4';
 const APP_SHELL = [
   './',
   './index.html',

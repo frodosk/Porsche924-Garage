@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<title>Porsche 924 Garage</title>
+<title>Kortes 924 Garage</title>
 <meta name="description" content="Digitales Bordbuch für den gemeinsamen Porsche 924 – Kilometer, Tankkosten und Wartung im Blick.">
 <meta name="theme-color" content="#0a0b0d">
 <link rel="manifest" href="manifest.json">
@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="924 Garage">
+<meta name="apple-mobile-web-app-title" content="Kortes 924 Garage">
 
 <link rel="preconnect" href="https://api.fontshare.com">
 <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,500,400&f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
@@ -43,6 +43,7 @@
       <circle cx="24" cy="27" r="2" fill="var(--color-primary)"/>
       <text x="24" y="39" text-anchor="middle" font-family="'Cabinet Grotesk', sans-serif" font-weight="700" font-size="8" fill="currentColor" letter-spacing="1">924</text>
     </svg>
+    <p class="lock-screen__eyebrow">Kortes</p>
     <h1 class="lock-screen__title">924 Garage</h1>
     <p class="lock-screen__subtitle">Nur für die Crew. Kennwort eingeben, um fortzufahren.</p>
     <input class="lock-screen__input" id="lockPassword" type="password" inputmode="text" autocapitalize="characters" placeholder="Kennwort" data-testid="input-lock-password" required>
@@ -65,7 +66,7 @@
         <text x="24" y="39" text-anchor="middle" font-family="'Cabinet Grotesk', sans-serif" font-weight="700" font-size="8" fill="currentColor" letter-spacing="1">924</text>
       </svg>
       <div class="app-header__title">
-        <span class="app-header__eyebrow">Porsche</span>
+        <span class="app-header__eyebrow">Kortes</span>
         <span class="app-header__name">924 Garage</span>
       </div>
     </div>
@@ -331,7 +332,7 @@
           </div>
         </div>
         <div class="card app-info">
-          <p>Porsche 924 Garage · Version 1.0</p>
+          <p>Kortes 924 Garage · Version 1.0</p>
           <p class="card__hint">Für Silas, Jason, Elias &amp; Samuel.</p>
         </div>
       </div>
@@ -492,6 +493,15 @@
       <label class="field"><span>Datum</span><input type="date" id="otherCostDate" data-testid="input-othercost-date"></label>
       <label class="field"><span>Bezeichnung</span><input type="text" id="otherCostTitle" placeholder="z. B. Zulassung, Autoradio, Versicherung" data-testid="input-othercost-title"></label>
       <label class="field"><span>Betrag (€)</span><input type="number" step="0.01" id="otherCostAmount" data-testid="input-othercost-amount"></label>
+      <div class="field">
+        <span>Kostenart</span>
+        <div class="chip-row" id="otherCostSplitTypeRow">
+          <button type="button" class="chip is-active" data-split-type="km" data-testid="chip-splittype-km">Anteilig an km</button>
+          <button type="button" class="chip" data-split-type="equal" data-testid="chip-splittype-equal">Einmalig, gleich verteilt</button>
+        </div>
+        <input type="hidden" id="otherCostSplitType" value="km">
+        <p class="field__hint" id="otherCostSplitTypeHint">Wird anteilig nach gefahrenen Kilometern verteilt – z. B. Versicherung, Zulassung.</p>
+      </div>
       <label class="field"><span>Notizen (optional)</span><textarea id="otherCostNotes" rows="2" data-testid="input-othercost-notes"></textarea></label>
       <p class="field-error" id="otherCostError" hidden></p>
       <div class="modal__actions">

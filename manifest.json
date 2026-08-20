@@ -1,6 +1,6 @@
 {
-  "name": "Porsche 924 Garage",
-  "short_name": "924 Garage",
+  "name": "Kortes 924 Garage",
+  "short_name": "Kortes 924",
   "description": "Digitales Bordbuch für den gemeinsamen Porsche 924 – Kilometer, Tankkosten und Wartung im Blick.",
   "start_url": "./index.html",
   "scope": "./",
